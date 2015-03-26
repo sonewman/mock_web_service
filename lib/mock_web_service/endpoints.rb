@@ -8,7 +8,7 @@ module MockWebService
       reset
     end
 
-    def handle method, path, handle=lambda{[500]}
+    def handle method, path, handle=lambda{|request| [500]}
       @handles[method][path] ||= {
         handle: handle,
         history: []

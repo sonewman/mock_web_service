@@ -37,9 +37,12 @@ module MockWebService
       Thread.abort_on_exception = true
       @app = App.new @endpoints
 
-      @server = Thread.new do
-        Rack::Handler::WEBrick.run @app, Host: @host, Port: @port
+      @server_thread = Thread.new do
+        Rack::Handler::WEBrick.run(@app, Host: @host, Port: @port) {|server|
+          @server = server
+        }
       end
+
       @started = true
 
       # default timeout is 10ms
@@ -48,7 +51,18 @@ module MockWebService
 
     def stop
       @started = false
-      @server.kill
+
+      # shutdown server and close port
+      if @server
+        @server.shutdown
+        @server = nil
+      end
+
+      # kill server thread
+      if @server_thread
+        @server_thread.kill
+        @server_thread = nil
+      end
     end
 
     # create methods for request verbs:

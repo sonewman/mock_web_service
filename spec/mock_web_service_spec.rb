@@ -1,10 +1,14 @@
+require 'cgi'
 require 'mock_web_service'
+
 include MockWebService
 
 host_name = '0.0.0.0'
 port = 1925
 endpoint = '/endpoint/to/test'
 response_body = 'OK!!!'
+
+test_path = "http://#{host_name}:#{port}#{endpoint}?query=test"
 
 describe MockWebService do
   before :each do
@@ -22,7 +26,7 @@ describe MockWebService do
     end
 
     # make HTTP request to Bridge API
-    response = HTTParty.get "http://#{host_name}:#{port}#{endpoint}?query=test"
+    response = HTTParty.get test_path
 
     # assert response code 200
     expect(response.code).to be 200
@@ -37,5 +41,13 @@ describe MockWebService do
 
     # assert response body is equal to expected
     expect(response.body).to eql 'OK!!!'
+  end
+
+  it 'should return 500 if no route is set' do
+    # make HTTP request to Bridge API
+    response = HTTParty.get test_path
+
+    # assert response code 500
+    expect(response.code).to be 500
   end
 end
