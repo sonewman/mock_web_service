@@ -1,22 +1,9 @@
 require 'forwardable'
 require 'webrick'
 require 'rack'
-require 'sinatra/base'
+require 'mock_web_service/application'
 
 module MockWebService
-  class App < Sinatra::Base
-    def initialize endpoints
-      @endpoints = endpoints
-      super
-    end
-
-    Endpoints.methods.each do |method|
-      send method.to_s, '*' do |path|
-        @endpoints.on_request method, path, request, env
-      end
-    end
-  end
-
   class Service
     extend Forwardable
 
@@ -68,8 +55,10 @@ module MockWebService
     # create methods for request verbs:
     # get, put, post, delete, head, options
     Endpoints.methods.each do |method|
-      define_method method.to_s do |path, &handle|
-        @endpoints.handle method, path, handle
+      define_method method.to_s do |path, &cb|
+        puts "Adding endpoint: #{method.upcase} #{path}"
+        # get handle for the method and path
+        @endpoints.set_handle method, path, &cb
       end
     end
 

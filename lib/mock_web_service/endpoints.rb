@@ -1,51 +1,79 @@
+require 'uri'
+require 'mock_web_service/endpoint'
+require 'mock_web_service/handle'
+require 'mock_web_service/request'
+
 module MockWebService
   class Endpoints
+
     class << self; attr_accessor :methods end
     @methods = :get, :put, :post, :delete, :head, :options
 
     def initialize
-      @handles = {}
-      reset
-    end
-
-    def handle method, path, handle=lambda{|request| [500]}
-      @handles[method][path] ||= {
-        handle: handle,
-        history: []
+      @routes = {}
+      Endpoints.methods.each {|method|
+        @routes[method] = {}
       }
     end
 
-    def on_request method, path, request, env
-      endpoint = handle method, path
-      parsed_request = parse_request(request, env)
-      endpoint[:history] << parsed_request
-      endpoint[:handle].call parsed_request
+    def get_endpoint method, path
+      # get the endpoint for the supplied
+      # path on the given method
+      endpoint = @routes[method][path]
+
+      # if we don't have an endpoint then
+      # we need to make a new one
+      unless endpoint
+        endpoint = Endpoint.new
+        @routes[method][path] = endpoint
+      end
+
+      endpoint
     end
 
-    def log method, path
-      handle(method, path)[:history]
+    def get_handle method, path, &cb
+      # parse the path to separate relevant parts
+      uri = URI path
+
+      # override parsed path
+      path = uri.path
+
+      # parse query string if there is one
+      query = uri.query ? Request::parse(uri.query) : {}
+
+      cb.call query, get_endpoint(method, path)
+    end
+
+    def set_handle method, path, &cb
+      get_handle method, path do |query, endpoint|
+        # set callback handle for the given query
+        endpoint.set_query query, &cb
+      end
+    end
+
+    def on_request method, req
+      endpoint = get_endpoint method, req.path
+      endpoint.get_query req.params
     end
 
     def reset
-      Endpoints.methods.each do |method|
-        @handles[method] = {}
-      end
+      Endpoints.methods.each {|method|
+        @routes[method].clear
+      }
     end
 
-    private
-      def parse_request request, env
-        return nil unless request
-        headers = env.select { |key, value| key.upcase == key }
-        MockWebService::Request.new headers, request.body.read
-      end
-  end
+    def log method, path
+      history = []
 
-  class Request
-    attr_accessor :headers
-    attr_accessor :body
-    def initialize(headers, body)
-      @headers = headers
-      @body = body
+      get_handle method, path do |query, endpoint|
+        endpoint.each_query do |q|
+          if q.match? query
+            history.concat q.history
+          end
+        end
+      end
+
+      history
     end
   end
 end
