@@ -47,6 +47,10 @@ module MockWebService
 
       # kill server thread
       if @server_thread
+        # add join to delay after killing the thread
+        # this prevents edge case race conditions
+        # between stopping and starting on the same thread
+        @server_thread.join
         @server_thread.kill
         @server_thread = nil
       end
