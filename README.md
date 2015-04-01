@@ -79,32 +79,32 @@ end
 
 # or
 
-mock.get('/string/pathname') { response }
+mock.get('/string/pathname') { 'response' }
 
 ```
 ##### service#post
 ```ruby
 mock.post '/string/pathname' do
-
+  # response
 end
 ```
 ##### service#put
 ```ruby
 mock.put '/string/pathname' do
-
+  # response
 end
 ```
 ##### service#delete
 ```ruby
 mock.delete '/string/pathname' do
-
+  # response
 end
 ```
 ##### service#head
 ##### service#options
 
 An endpoint handler can return anything that a normal Sinatra response can reply with:
-```ruby
+i```ruby
 # we can return a string
 
 mock.get '/path' do
@@ -209,7 +209,7 @@ mock.get '/something' do
   'Hello World!'
 end
 
-GET /something
+# GET /something
 
 request = mock.log(:get, '/something').last
 
@@ -229,9 +229,9 @@ mock.get '/something' do
   [200]
 end
 
-GET /something?abc=123
-GET /something
-GET /something?def=456
+# GET /something?abc=123
+# GET /something
+# GET /something?def=456
 
 requests = mock.log(:get, '/something')
 ```
@@ -247,7 +247,7 @@ mock.get '/something?abc=123' do
 end
 
 # when making the following request
-GET /something?abc=123&def=456
+# GET /something?abc=123&def=456
 
 # this will match the first handler and never reach the more specific one.
 ```
