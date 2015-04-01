@@ -1,14 +1,13 @@
 require 'sinatra/base'
 
 REQUEST_VARS= [:path, :session, :host, :port, :content_length, :content_type,
-  :host_with_port, :content_charset, :scheme, :referrer, :user_agent, :base_url,
-  :url, :fullpath, :accept_encoding, :accept_language, :hash,
-  :session_options, :params, :cookies]
+  :host_with_port, :content_charset, :referrer, :referer, :user_agent, :base_url,
+  :url, :fullpath, :accept_encoding, :accept_language, :params, :cookies]
 
 module MockWebService
 
   class Response
-    attr_reader :body, :status, :headers, :length
+    attr_reader :body, :status, :code, :headers, :length
 
     def initialize res
       # join the whole response body

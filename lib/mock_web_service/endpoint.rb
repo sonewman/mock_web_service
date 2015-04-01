@@ -4,7 +4,6 @@ module MockWebService
   class Endpoint
     def initialize
       @queries = []
-      @default = Handle.new Hash.new
     end
 
     def each_query &cb
@@ -12,14 +11,19 @@ module MockWebService
     end
 
     def find_query query
+      error = nil
       match = nil
       each_query do |q|
         if q.match? query
-          match = q
-          break
+          unless q.is_default
+            match = q
+            break
+          else
+            error = q
+          end
         end
       end
-      match
+      match || error
     end
 
     def get_query query

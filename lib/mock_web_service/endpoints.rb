@@ -67,7 +67,7 @@ module MockWebService
 
       get_handle method, path do |query, endpoint|
         endpoint.each_query do |q|
-          if q.match? query
+          if query.empty? || q.match?(query)
             history.concat q.history
           end
         end

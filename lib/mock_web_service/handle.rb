@@ -1,15 +1,20 @@
 
 module MockWebService
   class Handle
-    attr_reader :history
+    attr_reader :history, :is_default
     attr_accessor :callback
 
     def initialize query, &callback
       @history = []
       @query = query
-      @callback = callback ||= lambda{|req|
-        [500]
-      }
+
+      if callback
+        @callback = callback
+        @is_default = false
+      else
+        @callback = lambda{|req| [404]}
+        @is_default = true
+      end
     end
 
     def match? q

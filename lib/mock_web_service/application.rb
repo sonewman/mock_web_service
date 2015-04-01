@@ -26,7 +26,7 @@ module MockWebService
         # set a local reference so we can get
         # to it inside of `dispatch!`
         @current_request = req
-        
+
         handle.callback.call req
       end
     end
@@ -35,7 +35,7 @@ module MockWebService
       # catch the normal response
       # so we can return it correctly
       super
-      
+
       if Array === body and body[0].respond_to? :content_type
         content_type body[0].content_type
       else

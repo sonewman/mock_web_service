@@ -44,19 +44,21 @@ describe MockWebService do
     expect(response.body).to eql 'OK!!!'
   end
 
-  it 'should return 500 if no route is set' do
+  it 'should return 404 if no route is set' do
     # make HTTP request to server
     response = HTTParty.get test_path
 
     # assert response code 500
-    expect(response.code).to be 500
+    expect(response.code).to be 404
     
-    #request = mock.log(:get, endpoint).last
+    requests = mock.log(:get, endpoint)
+
+    expect(requests.length).to be 1
   end
   
   it 'reset should remove any set routes' do
     # set up mock endpoint
-    mock.get endpoint do |request|
+    mock.get endpoint do
       [200]
     end
 
@@ -66,9 +68,7 @@ describe MockWebService do
     response = HTTParty.get full_path
 
     # assert response code 500
-    expect(response.code).to be 500
-    
-    #request = mock.log(:get, endpoint).last
+    expect(response.code).to be 404
   end
 
   it 'should match a url without specifying a querystring while requesting with one' do
