@@ -7,13 +7,14 @@ module MockWebService
   class Service
     extend Forwardable
 
-    attr_accessor :started
+    attr_accessor :started, :app
     def_delegator :@endpoints, :reset, :reset
     def_delegator :@endpoints, :log, :log
 
     def initialize
       @started = false
       @endpoints ||= Endpoints.new
+      @app = App.new @endpoints
     end
 
     def start host, port
@@ -22,7 +23,6 @@ module MockWebService
       return if @started
 
       Thread.abort_on_exception = true
-      @app = App.new @endpoints
 
       @server_thread = Thread.new do
         Rack::Handler::WEBrick.run(@app, Host: @host, Port: @port) {|server|
