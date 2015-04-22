@@ -2,7 +2,7 @@ require 'sinatra/base'
 
 REQUEST_VARS= [:path, :session, :host, :port, :content_length, :content_type,
   :host_with_port, :content_charset, :referrer, :referer, :user_agent, :base_url,
-  :url, :fullpath, :accept_encoding, :accept_language, :params, :cookies]
+  :url, :fullpath, :accept_encoding, :accept_language, :cookies]
 
 module MockWebService
 
@@ -32,7 +32,7 @@ module MockWebService
   # certain generic
   class Request
     attr_reader :headers, :body, :query, :method, :path
-    attr_accessor :endpoint, :response
+    attr_accessor :endpoint, :response, :params
 
     def initialize req
       @method = req.request_method

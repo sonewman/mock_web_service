@@ -1,7 +1,6 @@
 require 'uri'
-require 'mock_web_service/endpoint'
-require 'mock_web_service/handle'
 require 'mock_web_service/request'
+require 'http_router'
 
 module MockWebService
   class Endpoints
@@ -10,70 +9,52 @@ module MockWebService
     @methods = :get, :put, :post, :delete, :head, :options
 
     def initialize
-      @routes = {}
+      @methods = {}
+      @history = {}
+      @not_found = lambda{|req| [404]}
+
       Endpoints.methods.each {|method|
-        @routes[method] = {}
+        @methods[method] = HttpRouter.new
+        @history[method] = {}
       }
     end
 
-    def get_endpoint method, path
-      # get the endpoint for the supplied
-      # path on the given method
-      endpoint = @routes[method][path]
+    def get_endpoint method, env
+      endpoints = @methods[method] 
 
-      # if we don't have an endpoint then
-      # we need to make a new one
-      unless endpoint
-        endpoint = Endpoint.new
-        @routes[method][path] = endpoint
+      if endpoints
+        endpoint = endpoints.recognize env
+        if endpoint.first && endpoint.first.length > 0
+          match = endpoint.first.first
+          route = match.route
+          return [route.dest.call, match.params]
+        end
       end
-
-      endpoint
-    end
-
-    def get_handle method, path, &cb
-      # parse the path to separate relevant parts
-      uri = URI path
-
-      # override parsed path
-      path = uri.path
-
-      # parse query string if there is one
-      query = uri.query ? Request::parse(uri.query) : {}
-
-      cb.call query, get_endpoint(method, path)
+      
+      [@not_found, {}]
     end
 
     def set_handle method, path, &cb
-      get_handle method, path do |query, endpoint|
-        # set callback handle for the given query
-        endpoint.set_query query, &cb
-      end
+      @methods[method].add(path).to{cb}
     end
 
-    def on_request method, req
-      endpoint = get_endpoint method, req.path
-      endpoint.get_query req.params
+    def on_request method, rack_request, req
+      handle = get_endpoint method, rack_request.env
+      req.endpoint = handle.first
+      req.params = handle.last
+      log(method, req.path) << req
+      req.endpoint.call req
     end
 
     def reset
       Endpoints.methods.each {|method|
-        @routes[method].clear
+        @methods[method].reset!
       }
     end
 
     def log method, path
-      history = []
-
-      get_handle method, path do |query, endpoint|
-        endpoint.each_query do |q|
-          if query.empty? || q.match?(query)
-            history.concat q.history
-          end
-        end
-      end
-
-      history
+      @history[method][path] ||= []
     end
+
   end
 end

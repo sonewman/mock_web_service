@@ -12,22 +12,14 @@ module MockWebService
 
     Endpoints.methods.each do |method|
       send method.to_s, '*' do
-        req = Request.new request
-
-        # get relevent handle for this request
-        handle = @endpoints.on_request method, req
-
-        # create circular reference
-        # to allow access to more info when mocking
-        req.endpoint = handle
-
-        handle.history << req
+        mock_req = Request.new request
 
         # set a local reference so we can get
         # to it inside of `dispatch!`
-        @current_request = req
+        @current_request = mock_req
 
-        handle.callback.call req
+        # get relevent handle for this request
+        @endpoints.on_request method, request, mock_req
       end
     end
 

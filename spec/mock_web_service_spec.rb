@@ -1,4 +1,3 @@
-require 'cgi'
 require 'mock_web_service'
 
 include MockWebService
@@ -20,7 +19,7 @@ describe MockWebService do
   after :each do
     mock.stop
   end
-
+  
   it 'should allow a mock endpoint to be created and return expected on request' do
 
     h = Hash.new
@@ -32,7 +31,7 @@ describe MockWebService do
     end
 
     # make HTTP request to API
-    response = HTTParty.get  full_path
+    response = HTTParty.get full_path
 
     # assert response code 200
     expect(response.code).to be 200
@@ -123,5 +122,27 @@ describe MockWebService do
     expect(req3.query).to eql({ 'c' => '3' })
     expect(res3.code).to eql 200
     expect(res3.body).to eql req3.response.body
+  end
+
+  it 'should match routes with parameters' do
+    # set up mock endpoint
+    mock.get '/route/:test' do |request|
+      expect(request.params).to eql :test => 'working'
+      [200, response_body]
+    end
+
+    # make HTTP request to API
+    response = HTTParty.get "#{url}/route/working"
+
+    # assert response code 200
+    expect(response.code).to be 200
+
+    request = mock.log(:get, '/route/working').last
+
+    # assert query is equal to expected
+    expect(request.params).to eql :test => 'working'
+
+    # assert response body is equal to expected
+    expect(response.body).to eql 'OK!!!'
   end
 end
