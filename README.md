@@ -134,7 +134,8 @@ end
 It is possible to access information about the incoming request in the handler
 by providing the `Proc` an argument:
 ```ruby
-mock.get '/path' do |request|
+mock.get '/path/:p' do |request|
+  # access request.params[:p]
   'Hello World'
 end
 ```

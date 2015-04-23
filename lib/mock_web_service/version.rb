@@ -3,5 +3,5 @@
 # version, push git commits and tags, and push
 
 module MockWebService
-  VERSION = "2.1.0"
+  VERSION = "3.0.0"
 end
