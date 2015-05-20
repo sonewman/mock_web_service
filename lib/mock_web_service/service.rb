@@ -2,32 +2,32 @@ require 'forwardable'
 require 'webrick'
 require 'rack'
 require 'mock_web_service/application'
+require 'mock_web_service/server'
 
 module MockWebService
   class Service
     extend Forwardable
 
-    attr_accessor :started, :app
+    attr_accessor :started
     def_delegator :@endpoints, :reset, :reset
     def_delegator :@endpoints, :log, :log
 
     def initialize
       @started = false
       @endpoints ||= Endpoints.new
-      @app = App.new @endpoints
+      @handler = Handler.new @endpoints
     end
 
     def start host, port
       @host = host
       @port = port
-      return if @started
+      return if @server
 
       Thread.abort_on_exception = true
 
       @server_thread = Thread.new do
-        Rack::Handler::WEBrick.run(@app, Host: @host, Port: @port) {|server|
-          @server = server
-        }
+        @server = Server.new(@handler, { Host: @host, Port: @port })
+        @server.start
       end
 
       @started = true
@@ -54,6 +54,14 @@ module MockWebService
         @server_thread.kill
         @server_thread = nil
       end
+    end
+
+    def default_proxy method, url
+      @endpoints.default_set_proxy method, url
+    end
+
+    def default_unset_proxy method, url
+      @endpoints.default_unset_proxy method, url
     end
 
     # create methods for request verbs:

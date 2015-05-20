@@ -1,5 +1,4 @@
 require 'mock_web_service'
-#require 'sinatra/base'
 
 include MockWebService
 
@@ -20,24 +19,24 @@ describe MockWebService do
   after :each do
     mock.stop
   end
-  
-  it 'should match routes with parameters' do
+
+  it 'should match a url without specifying a querystring while requesting with one' do
     # set up mock endpoint
-    mock.get '/route/:test' do |request|
-      expect(request.params).to eql :test => 'working'
+    mock.get endpoint do |request|
+      expect(request.query).to eql 'query' => 'test'
       [200, response_body]
     end
 
     # make HTTP request to API
-    response = HTTParty.get "#{url}/route/working"
+    response = HTTParty.get test_path
 
     # assert response code 200
     expect(response.code).to be 200
 
-    request = mock.log(:get, '/route/working').last
+    request = mock.log(:get, endpoint).last
 
     # assert query is equal to expected
-    expect(request.params).to eql :test => 'working'
+    expect(request.query).to eql 'query' => 'test'
 
     # assert response body is equal to expected
     expect(response.body).to eql 'OK!!!'

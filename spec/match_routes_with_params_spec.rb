@@ -10,7 +10,6 @@ response_body = 'OK!!!'
 
 url = "http://#{host_name}:#{port}"
 full_path = "#{url}#{endpoint}"
-test_path = "#{full_path}?query=test"
 
 describe MockWebService do
   before :each do
@@ -20,7 +19,7 @@ describe MockWebService do
   after :each do
     mock.stop
   end
-  
+
   it 'should match routes with parameters' do
     # set up mock endpoint
     mock.get '/route/:test' do |request|
