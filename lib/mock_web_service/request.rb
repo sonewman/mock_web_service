@@ -1,44 +1,23 @@
-require 'sinatra/base'
-
-REQUEST_VARS= [:path, :session, :host, :port, :content_length, :content_type,
-  :host_with_port, :content_charset, :referrer, :referer, :user_agent, :base_url,
-  :url, :fullpath, :accept_encoding, :accept_language, :cookies]
-
 module MockWebService
-
-  class Response
-    attr_reader :body, :status, :code, :headers, :length
-
-    def initialize res
-      # join the whole response body
-      @body = res.body.join ''
-
-      # set headers to duplicate of the responses
-      @headers = res.headers.dup
-
-      # add aliases for status code
-      @status = res.status
-      @code = @status
-
-      # set content-length
-      @length = @body.bytesize
-      @headers['content_length'] = @length
-    end
-  end
-
-  # This class (MockWebService::Request) wraps
-  # Sinatra::Request [< Rack::Request]
-  # It provides some accessors to retrieve
-  # certain generic
   class Request
-    attr_reader :headers, :body, :query, :method, :path
-    attr_accessor :endpoint, :response, :params
+    attr_reader :headers, :body, :query_string, :method, :path, :endpoint
+    attr_accessor :response, :params
 
-    def initialize req
+    alias :query :query_string
+
+    REQUEST_VARS = [:path, :session, :host, :port, :content_length, :content_type,
+    :host_with_port, :content_charset, :referrer, :referer, :user_agent, :base_url,
+    :url, :fullpath, :accept_encoding, :accept_language, :cookies]
+
+    def initialize req, res, endpoint, params
       @method = req.request_method
       @body = req.body.read
       @headers = req.env.select {|key, value| key.upcase == key}
-      @query = req.params
+      @query_string = Request::parse req.env['QUERY_STRING']
+      @params = params
+      @endpoint = endpoint
+
+      @response = res
 
       REQUEST_VARS.each do |name|
         instance_variable_set("@#{name}", req.send(name))
@@ -62,10 +41,6 @@ module MockWebService
       end
 
       Hash[params]
-    end
-
-    def set_response res
-      @response = Response.new(res) unless @response
     end
   end
 end

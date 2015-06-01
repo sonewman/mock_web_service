@@ -1,8 +1,8 @@
 require 'forwardable'
 require 'webrick'
 require 'rack'
-require 'mock_web_service/application'
-require 'mock_web_service/server'
+require 'uri'
+require 'mock_web_service/handle'
 
 module MockWebService
   class Service
@@ -15,7 +15,6 @@ module MockWebService
     def initialize
       @started = false
       @endpoints ||= Endpoints.new
-      @handler = Handler.new @endpoints
     end
 
     def start host, port
@@ -26,8 +25,14 @@ module MockWebService
       Thread.abort_on_exception = true
 
       @server_thread = Thread.new do
-        @server = Server.new(@handler, { Host: @host, Port: @port })
-        @server.start
+        app = Proc.new {|env|
+          @endpoints.resolve env
+        }
+
+        config = { Host: @host, Port: @port }
+        Rack::Handler::WEBrick.run(app, config) {|server|
+          @server = server
+        }
       end
 
       @started = true
@@ -50,17 +55,19 @@ module MockWebService
         # add join to delay after killing the thread
         # this prevents edge case race conditions
         # between stopping and starting on the same thread
-        @server_thread.join
         @server_thread.kill
+        @server_thread.join
         @server_thread = nil
       end
     end
 
     def default_proxy method, url
+      url = URI(url) if url.is_a? String
       @endpoints.default_set_proxy method, url
     end
 
-    def default_unset_proxy method, url
+    def reset__proxy method, url
+      url = URI(url) if url.is_a? String
       @endpoints.default_unset_proxy method, url
     end
 

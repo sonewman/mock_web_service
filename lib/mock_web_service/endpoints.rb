@@ -1,19 +1,26 @@
 require 'uri'
 require 'mock_web_service/request'
 require 'http_router'
+require 'rack'
+require 'mock_web_service/handle'
+require 'mock_web_service/proxy'
 
 module MockWebService
   class Endpoints
 
     class << self; attr_accessor :methods end
-    @methods = :get, :put, :post, :delete, :head, :optionsa
-
+    @methods = :get, :put, :post, :delete, :head, :options
+    attr_accessor :endpoints, :method, :matched_handler
 
     def initialize
       @methods = {}
       @history = {}
-      @not_found = lambda{|req| [404]}
-      @proxies_set = {}
+      @default_proxies = {}
+
+      @not_found = Proc.new {|env|
+        cb = Proc.new {|req| [404]}
+        Handle::call(env, {}, cb)
+      }
 
       Endpoints.methods.each {|method|
         @methods[method] = HttpRouter.new
@@ -21,43 +28,61 @@ module MockWebService
       }
     end
 
-    def get_endpoint method, env
+    def resolve env
+      method = env['REQUEST_METHOD'].downcase.to_sym
+      endpoint = nil
+
       endpoints = @methods[method]
 
       if endpoints
-        endpoint = endpoints.recognize env
-        if endpoint.first && endpoint.first.length > 0
-          match = endpoint.first.first
+        matched = endpoints.recognize env
+
+        if matched.first and matched.first.length > 0
+          match = matched.first.last
           route = match.route
-          return [route.dest.call, match.params]
+
+          endpoint = route.dest.call(match.params)
         end
       end
 
-      return [@not_found, {}] unless @proxies_set[method]
+      unless endpoint
+        endpoint = @default_proxies[method] || @not_found
+      end
+
+      req, handle_response = endpoint.call env
+      log(method, req.path) << req
+      handle_response
     end
 
     def set_handle method, path, &cb
-      @methods[method].add(path).to{cb}
+      @methods[method].add(path).to {|params|
+        Proc.new {|env| Handle::call(env, params, cb) }
+      }
     end
 
-    def default_set_proxy method, url
-      @proxies_set[method] = url
+    def default_set_proxy method = nil, url
+      proxy = Proxy.new url
+      proxyHandle = Proc.new {|env|
+        Handle::call env, {}, proxy
+      }
+
+      if method
+        @default_proxies[method] = proxyHandle
+      else
+        Endpoints.methods.each {|verb|
+          @default_proxies[verb] = proxyHandle
+        }
+      end
     end
 
     def default_unset_proxy method
-      @proxies_set[method] = nil
-    end
-
-    def on_request method, rack_request, req
-      handle = get_endpoint method, rack_request.env
-      do_handling handle, method, req
-    end
-
-    def do_handling handle, method, req
-      req.endpoint = handle.first
-      req.params = handle.last
-      log(method, req.path) << req
-      req.endpoint.call req
+      if method
+        @default_proxies[method] = nil
+      else
+        Endpoints.methods.each {|verb|
+          @default_proxies[verb] = nil
+        }
+      end
     end
 
     def reset
@@ -69,6 +94,5 @@ module MockWebService
     def log method, path
       @history[method][path] ||= []
     end
-
   end
 end
