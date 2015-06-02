@@ -104,7 +104,7 @@ end
 ##### service#options
 
 An endpoint handler can return anything that a normal Sinatra response can reply with:
-i```ruby
+```ruby
 # we can return a string
 
 mock.get '/path' do
