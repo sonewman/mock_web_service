@@ -1,7 +1,9 @@
+require 'uri'
+
 module MockWebService
   class Proxy
     def initialize uri
-      @uri = uri
+      @uri = uri.is_a?(String) ? URI(uri) : uri
     end
 
     def resolve_path path

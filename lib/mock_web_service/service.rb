@@ -1,16 +1,18 @@
 require 'forwardable'
 require 'webrick'
 require 'rack'
-require 'uri'
 require 'mock_web_service/handle'
+require 'mock_web_service/server'
 
 module MockWebService
   class Service
     extend Forwardable
 
     attr_accessor :started
-    def_delegator :@endpoints, :reset, :reset
     def_delegator :@endpoints, :log, :log
+    def_delegator :@endpoints, :reset, :reset
+    def_delegator :@endpoints, :reset_all, :reset_all
+    def_delegator :@endpoints, :reset_default_proxy, :reset_default_proxy
 
     def initialize
       @started = false
@@ -18,57 +20,55 @@ module MockWebService
     end
 
     def start host, port
+      return if @stop_api
       @host = host
       @port = port
-      return if @server
 
-      Thread.abort_on_exception = true
+      config = { Host: @host, Port: @port }
+      app = Proc.new {|env|
+        @endpoints.resolve env
+      }
 
-      @server_thread = Thread.new do
-        app = Proc.new {|env|
-          @endpoints.resolve env
-        }
-
-        config = { Host: @host, Port: @port }
-        Rack::Handler::WEBrick.run(app, config) {|server|
-          @server = server
-        }
-      end
-
-      @started = true
-
-      # default timeout is 10ms
-      wait_for_server 10
+      @stop_api = Server::start(config, app)
     end
 
     def stop
-      @started = false
+      @stop_api.call if @stop_api
+      @stop_api = nil
+    end
 
-      # shutdown server and close port
-      if @server
-        @server.shutdown
-        @server = nil
+    def set_proxy method=nil, path=nil, proxy_url
+      if method.is_a? String
+        path = method
+        method = nil
       end
 
-      # kill server thread
-      if @server_thread
-        # add join to delay after killing the thread
-        # this prevents edge case race conditions
-        # between stopping and starting on the same thread
-        @server_thread.kill
-        @server_thread.join
-        @server_thread = nil
+      if path
+        @endpoints.set_proxy method, path, proxy_url
+      else
+        default_proxy(method, proxy_url)
       end
     end
 
-    def default_proxy method, url
-      url = URI(url) if url.is_a? String
-      @endpoints.default_set_proxy method, url
+    def unset_proxy method=nil, path=nil, proxy_url
+      if method.is_a? String
+        path = method
+        method = nil
+      end
+
+      if path
+        @endpoints.reset_proxy method, path, proxy_url
+      else
+        reset_default_proxy(method, proxy_url)
+      end
     end
 
-    def reset__proxy method, url
-      url = URI(url) if url.is_a? String
-      @endpoints.default_unset_proxy method, url
+    def default_proxy method=nil, proxy_url
+      @endpoints.default_set_proxy method, proxy_url
+    end
+
+    def reset_default_proxy method=nil
+      @endpoints.default_unset_proxy method
     end
 
     # create methods for request verbs:
@@ -77,7 +77,7 @@ module MockWebService
       define_method method.to_s do |path, &cb|
         puts "Adding endpoint: #{method.upcase} #{path}"
         # get handle for the method and path
-        @endpoints.set_handle method, path, &cb
+        @endpoints.set_handle method, path, cb
       end
     end
 
